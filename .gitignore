@@ -84,7 +84,8 @@ celerybeat-schedule
 # Environments
 .env
 .venv
-env/
+.vscode/
+env_flask/
 venv/
 ENV/
 env.bak/
