@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask_restful import Resource, Api
+from flask_restful import Resource, Api, reqparse
 from flask_jwt import JWT, jwt_required
 
 from security import authenticate, identity
@@ -17,6 +17,16 @@ items =[]
 
 
 class Item(Resource):
+    @classmethod
+    def _parser(cls,message):
+        parser = reqparse.RequestParser() #parsear los datos que vienen en el JSON, solo se admiten los declarados, el resto se borra
+        parser.add_argument('price',
+            type=float,
+            required=True,
+            help=message
+        )
+        return parser.parse_args()
+
     @jwt_required()
     def get(self, name):
         item = next(filter(lambda i : i['name'] == name, items), None) #retorna el primer mach o None si no hay mach
@@ -30,14 +40,15 @@ class Item(Resource):
         if next(filter(lambda i : i['name'] == name, items), None):
             return {'message': 'El item de nombre {} ya existe'.format(name)}, 400 #BAD REQUEST
 
-        data= request.get_json(silent=True) #force=True significa que no se nescita del content-type header (NO RECOMENDADO)
+        data = Item._parser("El campo no puede estar en blaco!")
+        #data = request.get_json(silent=True) #force=True significa que no se nescita del content-type header (NO RECOMENDADO)
         #silent=True si existe algun error fureza un None
         item = {'name': name, 'price': data['price']}
         items.append(item)
         return item, 201 #code 201 is CREATED
 
     def put(self, name):
-        data = request.get_json(silent=True)
+        data = Item._parser("El campo no puede estar en blaco!")
         item = next(filter(lambda x: x['name'] == name, items), None)
         if item is None:
             item = {'name': name, 'price': data['price']}
