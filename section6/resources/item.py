@@ -1,4 +1,3 @@
-import sqlite3
 from flask import request
 from flask_restful import Resource, reqparse
 from flask_jwt import jwt_required
@@ -15,14 +14,19 @@ class Item(Resource):
             required=True,
             help=message
         )
+        parser.add_argument('store_id',
+            type=int,
+            required=True,
+            help=message
+        )
         return parser.parse_args()
 
-    #@jwt_required()
+    @jwt_required()
     def get(self, name):
         item = ItemModel.find_by_name(name)
 
         if item:
-            return item
+            return item.json()
         return {'message': 'item not found'}, 404
 
     def post(self, name):
@@ -31,59 +35,39 @@ class Item(Resource):
         
         data = self._parser('Campo requerido!')
 
-        item = ItemModel(name, data['price'])
+        item = ItemModel(name, data['price'], data['store_id'])
 
         try:
-            ItemModel.insert(item)
+            item.save()
         except:
             return {'message': 'Un ERROR ocurrio'}, 500
-        return item, 201
+        return item.json(), 201
 
     def put(self, name):
         data = self._parser('Campo requerido!')
-        item = ItemModel(name, data['price'])
-
-        if ItemModel.find_by_name(name):
-            try:
-                ItemModel.update(item)
-            except:
-                return {'message': 'Un ERROR ocurrio'}, 500
-            return item
+        item = ItemModel.find_by_name(name)
+        
+        if item:
+            item.price = data['price']
+        else:
+            item = ItemModel(name, **data)
         
         try:
-            ItemModel.insert(item)
+            item.save()
         except:
             return {'message': 'Un ERROR ocurrio'}, 500
-        return item, 201
+        
+        return item.json(), 201
 
 
     def delete(self, name):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-
-        query = 'DELETE FROM items WHERE name=?'
-
-        cursor.execute(query, (name,))
-
-        connection.commit()
-        connection.close()
-        return {'message': 'Item borrado'}
-
+        item = ItemModel.find_by_name(name)
+        if item:
+            item.delete()
+        return {'message': 'Item delete'}
 
 class ItemList(Resource):
     def get(self):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-
-        query = 'SELECT * FROM items'
-
-        items = []
-
-        result = cursor.execute(query)
-
-        for row in result:
-            items.append({'name': row[0], 'price': row[1]})
-        
-        connection.close()
-
-        return {'items': items}
+        return {'items': [i.json() for i in ItemModel.query.all()]}
+        #whith lambda
+        #return {'items': list(map(lambda x: x.json(), ItemModel.query.all()))}

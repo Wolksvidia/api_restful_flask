@@ -1,4 +1,3 @@
-import sqlite3
 from flask_restful import Resource, reqparse
 from models.user import UserModel
 
@@ -23,11 +22,10 @@ class UserRegister(Resource):
        
         if UserModel.find_by_username(data['username']):
             return {'message': 'El usuario ya existe'}, 400
+
+        #user = UserModel(None, data['username'], data['password'])
+        user = UserModel(**data)#data es un diccionario como si fuera **kwargs
+
+        user.save()
         
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-        query = 'INSERT INTO users VALUES (NULL, ?, ?)'
-        cursor.execute(query, (data['username'], data['password']))
-        connection.commit()
-        connection.close()
         return {'message': 'Usuario creado con exito'}, 201
