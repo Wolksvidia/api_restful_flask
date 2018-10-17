@@ -3,10 +3,13 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_refresh_token_required,
-    get_jwt_identity
+    get_jwt_identity,
+    jwt_required,
+    get_raw_jwt
     )
 from werkzeug.security import safe_str_cmp
 from models.user import UserModel
+from blacklist import BLACKLIST
 
 def _parser():
     parser = reqparse.RequestParser()
@@ -75,7 +78,18 @@ class UserLogin(Resource):
         return {'message': 'Invalid credentials'}, 401
 
 
+class UserLogout(Resource):
+    @jwt_required
+    def post(self):
+        jti = get_raw_jwt()['jti'] #jti es "JWT ID" un identificador para un JWT
+        BLACKLIST.add(jti)
+        return {'message': 'Successfully logged out'}, 200
+
+
 class TokenRefresh(Resource):
+    """Al momento del login se genera un toke fresh... pasado el tiempo para meantener el login 
+    se va generando un nuevo accesss token como "no fresh", para determinadas acciones es necesario un token 
+    fresh que valide que es el usuario, por lo cual se le solicita que se loguee nuevamente"""
     @jwt_refresh_token_required
     def post(self):
         current_user = get_jwt_identity()
